@@ -37,6 +37,7 @@ import com.example.myapplication.features.profile.domain.usercases.GetProfileUse
 import com.example.myapplication.features.profile.presentation.ProfileViewModel
 import com.example.myapplication.features.servertime.data.datasource.ServerTimeLocalDataSource
 import com.example.myapplication.features.servertime.data.datasource.ServerTimeRemoteDataSource
+import com.example.myapplication.features.servertime.data.datasource.SimulatedServerDataSource // ✅ AGREGAR este import
 import com.example.myapplication.features.servertime.data.repository.ServerTimeRepository
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import okhttp3.OkHttpClient
@@ -85,18 +86,15 @@ val appModule = module() {
     factory { FindByNickNameUseCase(get()) }
     viewModel { GirhubViewModel(get()) }
 
-
     // Profile
     single<IProfileRepository> { ProfileRepository() }
     factory { GetProfileUseCase(get()) }
     viewModel { ProfileViewModel(get()) }
 
-
     //Login
     viewModel{ LogInViewModel(get()) }
     factory { LoginUseCase(get()) }
     single<ILoginRepository> { LoginRepository() }
-
 
     //Movies
     single<IMovieDao>{ get<AppRoomDatabase>().movieDao() }
@@ -110,10 +108,8 @@ val appModule = module() {
     factory { GetMoviesUseCase(get()) }
     viewModel { MoviesViewModel(get(), get()) }
 
-
     //RoomDatabase
     single { AppRoomDatabase.getDatabase(get()) }
-
 
     //Dollar
     single<IDollarDao> { get<AppRoomDatabase>().dollarDao() }
@@ -124,7 +120,7 @@ val appModule = module() {
     single<IDollarRepository> { DollarRepository(get(), get()) }
     single<DollarRepository>{ DollarRepository(get(), get()) }
     factory { FetchDollarUseCase(get()) }
-    viewModel{ DollarViewModel(get(), get(), get()) } // AGREGAR get() para ServerTimeRepository
+    viewModel{ DollarViewModel(get(), get(), get()) }
 
     // Maintenance
     single { MaintenanceDataStore(get()) }
@@ -134,11 +130,11 @@ val appModule = module() {
     single { MaintenanceRepository(get(), get()) }
     viewModel { MaintenanceViewModel(get()) }
 
-    // Server Time - NUEVA SECCIÓN
+    // Server Time - ACTUALIZADO CON SIMULATED SERVER
     single<android.content.SharedPreferences> {
         androidContext().getSharedPreferences("server_time_prefs", Context.MODE_PRIVATE)
     }
-    single { ServerTimeRemoteDataSource() }
+    single { SimulatedServerDataSource() } // ✅ NUEVO - Servidor simulado
     single { ServerTimeLocalDataSource(get()) }
-    single { ServerTimeRepository(get(), get()) }
+    single { ServerTimeRepository(get(), get()) } // Esto ahora usará SimulatedServerDataSource
 }

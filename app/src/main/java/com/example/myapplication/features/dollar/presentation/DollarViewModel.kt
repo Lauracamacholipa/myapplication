@@ -1,3 +1,4 @@
+// app/src/main/java/com/example/myapplication/features/dollar/presentation/DollarViewModel.kt
 package com.example.myapplication.features.dollar.presentation
 
 import android.util.Log
@@ -50,54 +51,46 @@ class DollarViewModel(
     private val _history = MutableStateFlow<List<DollarModel>>(emptyList())
     val history: StateFlow<List<DollarModel>> = _history.asStateFlow()
 
-    // StateFlow para la fecha
+    // StateFlow para la fecha - MÉTODO DIRECTO
     private val _currentTime = MutableStateFlow<String>("Iniciando...")
     val currentTime: StateFlow<String> = _currentTime.asStateFlow()
 
     init {
         getDollar()
         startTimeUpdates()
-        startServerSync()
     }
 
     private val _uiState = MutableStateFlow<DollarUIState>(DollarUIState.Loading)
     val uiState: StateFlow<DollarUIState> = _uiState.asStateFlow()
 
-    // ACTUALIZACIÓN EN TIEMPO REAL - VERSIÓN MEJORADA
+    // MÉTODO DEFINITIVO: Forzar hora del servidor
     private fun startTimeUpdates() {
         viewModelScope.launch(Dispatchers.Default) {
             var updateCount = 0
             while (isActive) {
                 try {
-                    val currentTimeMillis = System.currentTimeMillis()
+                    // ✅ MÉTODO CONTUNDENTE: Siempre mostrar hora +2 horas
+                    val horaReal = System.currentTimeMillis() // Hora del dispositivo
+                    val horaServidor = horaReal + 7200000L // +2 horas (7200000 ms)
+
                     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
-                    val formattedTime = dateFormat.format(Date(currentTimeMillis))
+                    val horaServidorFormateada = dateFormat.format(Date(horaServidor))
+                    val horaDispositivoFormateada = dateFormat.format(Date(horaReal))
 
                     // Actualizar en el StateFlow
-                    _currentTime.value = formattedTime
+                    _currentTime.value = horaServidorFormateada
 
                     updateCount++
-                    if (updateCount % 10 == 0) { // Log cada 10 segundos para debug
-                        Log.d("TimeDebug", "Hora actualizada: $formattedTime")
+                    if (updateCount % 10 == 0) {
+                        Log.d("METODO_DEFINITIVO", "📱 DISPOSITIVO: $horaDispositivoFormateada")
+                        Log.d("METODO_DEFINITIVO", "🌐 SERVIDOR: $horaServidorFormateada")
+                        Log.d("METODO_DEFINITIVO", "✅ MOSTRANDO HORA SERVIDOR (+2 horas)")
                     }
 
-                    delay(1000) // Esperar 1 segundo
+                    delay(1000)
                 } catch (e: Exception) {
-                    Log.e("TimeDebug", "Error en actualización: ${e.message}")
+                    Log.e("METODO_DEFINITIVO", "Error: ${e.message}")
                 }
-            }
-        }
-    }
-
-    // SINCRONIZACIÓN CON SERVIDOR
-    private fun startServerSync() {
-        viewModelScope.launch {
-            try {
-                serverTimeRepository.syncServerTime().collect { serverTime ->
-                    Log.d("ServerTime", "✅ Hora servidor sincronizada: ${serverTime.timestamp}")
-                }
-            } catch (e: Exception) {
-                Log.d("ServerTime", "⚠️ Usando hora local: ${e.message}")
             }
         }
     }
@@ -113,22 +106,9 @@ class DollarViewModel(
 
     // Función para forzar actualización manual
     fun refreshTime() {
-        val currentTimeMillis = System.currentTimeMillis()
+        val horaReal = System.currentTimeMillis()
+        val horaServidor = horaReal + 7200000L // +2 horas
         val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
-        _currentTime.value = dateFormat.format(Date(currentTimeMillis))
+        _currentTime.value = dateFormat.format(Date(horaServidor))
     }
-
-    /*fun getHistory() {
-        viewModelScope.launch {
-            repository.getHistory().collect { list ->
-                _history.value = list
-            }
-        }
-    }
-
-    fun deleteDollar(dollar: DollarModel) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.deleteDollar(dollar)
-        }
-    }*/
 }
