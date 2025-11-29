@@ -1,61 +1,56 @@
 // app/src/main/java/com/example/myapplication/features/servertime/data/datasource/ServerTimeRemoteDataSource.kt
 package com.example.myapplication.features.servertime.data.datasource
 
+import android.util.Log
+import com.example.myapplication.features.servertime.data.api.WorldTimeService
 import com.example.myapplication.features.servertime.domain.model.ServerTimeModel
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.database
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
-class ServerTimeRemoteDataSource @Inject constructor() {
+class ServerTimeRemoteDataSource @Inject constructor(
+    private val worldTimeService: WorldTimeService
+) {
 
-    fun getServerTime(): Flow<ServerTimeModel> = callbackFlow {
-        val callback = object : ValueEventListener {
-            override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
-            }
+    fun getServerTime(): Flow<ServerTimeModel> = flow {
+        try {
+            Log.d("API_DEBUG", "🔄 LLAMANDO a WorldTimeAPI...")
+            val response = worldTimeService.getWorldTime()
+            Log.d("API_DEBUG", "✅ API RESPONSE: unixtime=${response.unixtime}")
 
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val serverTimestamp = snapshot.getValue(Long::class.java) ?: System.currentTimeMillis()
-                val serverTime = ServerTimeModel(
-                    timestamp = serverTimestamp,
-                    lastSync = System.currentTimeMillis()
-                )
-                trySend(serverTime)
-            }
-        }
+            val serverTime = ServerTimeModel(
+                timestamp = response.unixtime * 1000, // Convertir a milliseconds
+                lastSync = System.currentTimeMillis()
+            )
+            Log.d("API_DEBUG", "🕒 HORA SERVIDOR: ${serverTime.timestamp}")
+            emit(serverTime)
+        } catch (e: Exception) {
+            Log.d("API_DEBUG", "❌ FALLÓ WorldTimeAPI: ${e.message}")
+            Log.d("API_DEBUG", "📱 Usando HORA LOCAL como fallback")
 
-        val database = com.google.firebase.Firebase.database
-        val timeRef = database.getReference("server_time")
-        timeRef.addValueEventListener(callback)
-
-        awaitClose {
-            timeRef.removeEventListener(callback)
+            // ESTE ES EL PROBLEMA - siempre usa local cuando falla
+            val fallbackTime = ServerTimeModel(
+                timestamp = System.currentTimeMillis(), // ← ¡ESTA ES LA HORA LOCAL!
+                lastSync = System.currentTimeMillis()
+            )
+            emit(fallbackTime)
         }
     }
 
-    suspend fun updateServerTime(): Flow<ServerTimeModel> = callbackFlow {
-        val currentTime = System.currentTimeMillis()
-        val database = com.google.firebase.Firebase.database
-        val timeRef = database.getReference("server_time")
+    suspend fun updateServerTime(): Flow<ServerTimeModel> = flow {
+        try {
+            Log.d("API_DEBUG", "🔄 SINCRONIZANDO con WorldTimeAPI...")
+            val response = worldTimeService.getWorldTime()
+            Log.d("API_DEBUG", "✅ SINCRONIZACIÓN EXITOSA: ${response.unixtime}")
 
-        timeRef.setValue(currentTime).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val serverTime = ServerTimeModel(
-                    timestamp = currentTime,
-                    lastSync = System.currentTimeMillis()
-                )
-                trySend(serverTime)
-                close()
-            } else {
-                close(task.exception ?: Exception("Failed to update server time"))
-            }
+            val serverTime = ServerTimeModel(
+                timestamp = response.unixtime * 1000,
+                lastSync = System.currentTimeMillis()
+            )
+            emit(serverTime)
+        } catch (e: Exception) {
+            Log.d("API_DEBUG", "❌ SINCRONIZACIÓN FALLÓ: ${e.message}")
+            throw e // ← IMPORTANTE: No silenciar el error aquí
         }
-
-        awaitClose { }
     }
 }
