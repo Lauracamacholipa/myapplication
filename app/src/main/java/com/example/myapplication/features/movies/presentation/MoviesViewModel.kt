@@ -28,10 +28,10 @@ class MoviesViewModel(val useCase: GetMoviesUseCase,
     val state : StateFlow<MoviesUiState> = _state.asStateFlow()
 
     init {
-        observeLocalMovies()
+        fetchMovies()
     }
 
-    private fun observeLocalMovies() {
+    /*private fun observeLocalMovies() {
         viewModelScope.launch {
             val logData = LogApi.LogData.newBuilder()
                 .setAndroidId(ByteString.copyFromUtf8("abc123"))
@@ -59,7 +59,7 @@ class MoviesViewModel(val useCase: GetMoviesUseCase,
 //                }
 //            }
         }
-    }
+    }*/
 
     fun fetchMovies() {
         viewModelScope.launch(Dispatchers.IO) {
