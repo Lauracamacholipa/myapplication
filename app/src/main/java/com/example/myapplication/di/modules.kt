@@ -1,5 +1,7 @@
+// app/src/main/java/com/example/myapplication/di/modules.kt
 package com.example.myapplication.di
 
+import android.content.Context
 import com.example.myapplication.features.dollar.data.database.dao.IDollarDao
 import com.example.myapplication.features.dollar.data.datasource.DollarLocalDataSource
 import com.example.myapplication.features.dollar.data.datasource.RealTimeRemoteDataSource
@@ -23,7 +25,6 @@ import com.example.myapplication.features.maintenance.presentation.MaintenanceVi
 import com.example.myapplication.features.movies.data.api.MovieService
 import com.example.myapplication.features.movies.data.database.AppRoomDatabase
 import com.example.myapplication.features.movies.data.database.dao.IMovieDao
-//import com.example.myapplication.features.movies.data.database.AppRoomDatabaseMovies
 import com.example.myapplication.features.movies.data.datasource.MovieLocalDataSource
 import com.example.myapplication.features.movies.data.datasource.MovieRemoteDataSource
 import com.example.myapplication.features.movies.data.repository.MovieRepository
@@ -34,8 +35,12 @@ import com.example.myapplication.features.profile.data.repository.ProfileReposit
 import com.example.myapplication.features.profile.domain.repository.IProfileRepository
 import com.example.myapplication.features.profile.domain.usercases.GetProfileUseCase
 import com.example.myapplication.features.profile.presentation.ProfileViewModel
+import com.example.myapplication.features.servertime.data.datasource.ServerTimeLocalDataSource
+import com.example.myapplication.features.servertime.data.datasource.ServerTimeRemoteDataSource
+import com.example.myapplication.features.servertime.data.repository.ServerTimeRepository
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import okhttp3.OkHttpClient
+import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -94,8 +99,6 @@ val appModule = module() {
 
 
     //Movies
-    //single { AppRoomDatabaseMovies.getDatabase(get()) }
-    //single { get<AppRoomDatabaseMovies>().movieDao() }
     single<IMovieDao>{ get<AppRoomDatabase>().movieDao() }
     single<MovieService> {
         get<Retrofit>(named("movies")).create(MovieService::class.java)
@@ -109,8 +112,6 @@ val appModule = module() {
 
 
     //RoomDatabase
-    //single { AppRoomDatabaseA.getDatabase(get()) }
-    //single { get<AppRoomDatabaseA>().dollarDao() }
     single { AppRoomDatabase.getDatabase(get()) }
 
 
@@ -123,7 +124,7 @@ val appModule = module() {
     single<IDollarRepository> { DollarRepository(get(), get()) }
     single<DollarRepository>{ DollarRepository(get(), get()) }
     factory { FetchDollarUseCase(get()) }
-    viewModel{ DollarViewModel(get(), get()) }
+    viewModel{ DollarViewModel(get(), get(), get()) } // AGREGAR get() para ServerTimeRepository
 
     // Maintenance
     single { MaintenanceDataStore(get()) }
@@ -132,4 +133,12 @@ val appModule = module() {
     }
     single { MaintenanceRepository(get(), get()) }
     viewModel { MaintenanceViewModel(get()) }
+
+    // Server Time - NUEVA SECCIÓN
+    single<android.content.SharedPreferences> {
+        androidContext().getSharedPreferences("server_time_prefs", Context.MODE_PRIVATE)
+    }
+    single { ServerTimeRemoteDataSource() }
+    single { ServerTimeLocalDataSource(get()) }
+    single { ServerTimeRepository(get(), get()) }
 }
